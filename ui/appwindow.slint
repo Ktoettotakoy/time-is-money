@@ -1,4 +1,4 @@
-import { Button, VerticalBox } from "std-widgets.slint";
+import { Button, VerticalBox, HorizontalBox } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
     title: "My accounting app";
@@ -7,22 +7,42 @@ export component AppWindow inherits Window {
     
 
     callback request-acc-data();
-
-   
+    callback choose-file();
+    property <bool> file-chosen: false;
+    in property <string> filename;
+    in-out property <string> filepath;
     
     VerticalBox {
         Text {
             text: "Hello world, it's only beginning";
         }
 
-        Button {
-            width: 360px;
-            height: 100px;
-            text: "Get accounting related info into terminal";
-            clicked => {
-                root.request-acc-data();
+        Text{
+            text: filename;
+        }
+
+        HorizontalBox {
+            Button {
+                width:190px;
+                height: 100px;
+                padding: 0px;
+                text: "Choose file";
+                clicked => {
+                    root.choose-file();
+                }
+            }
+            Button {
+                width: 190px;
+                height: 100px;
+                padding: 0px;
+                text: "Get accounting related info into terminal";
+                clicked => {
+                    root.request-acc-data();
+                }
             }
         }
+
+        
     }    
     
 }
