@@ -1,3 +1,3 @@
-pub mod data_operations {
-    pub mod parsers;
+pub mod file_handlers {
+    pub mod txt_handlers;
 }

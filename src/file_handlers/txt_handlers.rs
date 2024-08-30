@@ -1,11 +1,6 @@
 use std::{collections::HashMap, fs::File, io::Read};
 use serde_json::json;
 
-pub fn get_data_from_excel() {
-    let filename = "MyAcc.xls";
-    print!("Extracting data from {}", filename)
-}
-
 pub fn process_data_from_file(filepath: &str) -> String {
     
     let mut expenses = put_data_into_hashmap(filepath);

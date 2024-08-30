@@ -1,4 +1,4 @@
-use acc_app::data_operations::parsers::process_data_from_file;
+use acc_app::file_handlers::txt_handlers::process_data_from_file;
 
 slint::include_modules!();
 
