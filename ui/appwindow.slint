@@ -1,0 +1,28 @@
+import { Button, VerticalBox } from "std-widgets.slint";
+
+export component AppWindow inherits Window {
+    title: "My accounting app";
+    preferred-height: 400px;
+    preferred-width: 400px;
+    
+
+    callback request-acc-data();
+
+   
+    
+    VerticalBox {
+        Text {
+            text: "Hello world, it's only beginning";
+        }
+
+        Button {
+            width: 360px;
+            height: 100px;
+            text: "Get accounting related info into terminal";
+            clicked => {
+                root.request-acc-data();
+            }
+        }
+    }    
+    
+}
