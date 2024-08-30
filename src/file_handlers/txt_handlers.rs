@@ -1,27 +1,31 @@
-use std::{collections::HashMap, fs::File, io::Read};
+use std::{collections::HashMap, fs::File, io::Read, path::Path};
 use serde_json::json;
 
 pub fn process_data_from_file(filepath: &str) -> String {
     
-    let mut expenses = put_data_into_hashmap(filepath);
+    let expenses_map = put_data_into_hashmap(filepath);
     let mut sum = 0.0;
-
-    for (_category, total) in expenses.iter_mut() {
-        sum += *total;
+    if let Some(mut expenses) = expenses_map{
+        for (_category, total) in expenses.iter_mut() {
+            sum += *total;
+        }
+    
+        println!("Total is {:.2}\nBy category:", (sum * 100.0).round() / 100.0);
+        
+        let json_expenses = json!(expenses);  // Serialize the HashMap to JSON format
+        let result = serde_json::to_string_pretty(&json_expenses).unwrap();
+    
+        result
+    } else {
+        "".to_string()
     }
 
-    println!("Total is {:.2}\nBy category:", (sum * 100.0).round() / 100.0);
-    
-    let json_expenses = json!(expenses);  // Serialize the HashMap to JSON format
-    let result = serde_json::to_string_pretty(&json_expenses).unwrap();
-
-    result
 }
 
-fn put_data_into_hashmap(filepath: &str) -> HashMap<String, f64> {
+fn put_data_into_hashmap(filepath: &str) -> Option<HashMap<String, f64>> {
     let mut expenses_by_category: HashMap<String, f64> = HashMap::new();
     
-    if let Some(data) = read_file_to_string(filepath) {
+    if let Some(data) = read_txt_file_to_string(filepath) {
         let mut lines = data.lines();
         
         // Skip the first line (month name)
@@ -49,15 +53,20 @@ fn put_data_into_hashmap(filepath: &str) -> HashMap<String, f64> {
         for value in expenses_by_category.values_mut() {
             *value = (*value * 100.0).round() / 100.0;
         }
+        Some(expenses_by_category)
+    } else {
+        None
     }
-
-    expenses_by_category
 }
 
-fn read_file_to_string(filepath: &str) -> Option<String> {
+fn read_txt_file_to_string(filepath: &str) -> Option<String> {
     let mut buffer = String::new();
 
     if let Ok(mut file) = File::open(filepath) {
+        if Path::new(filepath).extension().and_then(|s| s.to_str()) != Some("txt") {
+            println!("File is not a .txt file");
+            return None
+        }
         if file.read_to_string(&mut buffer).is_ok() {
             return Some(buffer);
         }
@@ -72,7 +81,7 @@ mod tests {
     use std::fs::write;
 
     #[test]
-    fn test_read_file_to_string_success() {
+    fn test_read_txt_file_to_string_success() {
         // Create a temporary file path
         let test_file_path = "test1.txt";
 
@@ -84,7 +93,7 @@ mod tests {
         }
 
         // Test the function
-        let result = read_file_to_string(test_file_path);
+        let result = read_txt_file_to_string(test_file_path);
 
         // Check if the function returned the correct string
         assert!(result.is_some());
@@ -97,11 +106,21 @@ mod tests {
     }
 
     #[test]
-    fn test_read_file_to_string_file_not_found() {
+    fn test_read_txt_file_to_string_file_not_found() {
         // Ensure the file doesn't exist
         let test_file_path = "non_existent_file.txt";
         // Test the function
-        let result = read_file_to_string(test_file_path);
+        let result = read_txt_file_to_string(test_file_path);
+        // Check if the function returned None because the file does not exist
+        assert!(result.is_none());
+    }
+
+    #[test]    
+    fn test_read_txt_file_to_string_file_is_not_txt(){
+        // Ensure the file doesn't exist
+        let test_file_path = "non_existent_file.png";
+        // Test the function
+        let result = read_txt_file_to_string(test_file_path);
         // Check if the function returned None because the file does not exist
         assert!(result.is_none());
     }
