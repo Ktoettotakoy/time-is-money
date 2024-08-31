@@ -1,5 +1,4 @@
 use std::{collections::HashMap, fs::File, io::Read, path::Path};
-use serde_json::json;
 
 pub fn process_data_from_file(filepath: &str) -> String {
     
@@ -9,12 +8,14 @@ pub fn process_data_from_file(filepath: &str) -> String {
         for (_category, total) in expenses.iter_mut() {
             sum += *total;
         }
-    
-        println!("Total is {:.2}\nBy category:", (sum * 100.0).round() / 100.0);
+
+        let mut result = format!("Total is {:.2}\nBy category:", (sum * 100.0).round() / 100.0);
+        // println!("Total is {:.2}\nBy category:", (sum * 100.0).round() / 100.0);
         
-        let json_expenses = json!(expenses);  // Serialize the HashMap to JSON format
-        let result = serde_json::to_string_pretty(&json_expenses).unwrap();
-    
+        // Serialize the HashMap to JSON format
+        let json_expenses = serde_json::to_string_pretty(&expenses).unwrap();
+        
+        result += &json_expenses;
         result
     } else {
         "".to_string()
@@ -139,14 +140,19 @@ mod tests {
 
         let json_string = process_data_from_file(test_file_path);
 
-        // Assertions
-        let expected_json = r#"{
-  "Groceries": 27.83,
-  "Sweets": 14.3
-}"#;
-        assert_eq!(json_string.trim(), expected_json);
+        // Expected JSON strings (order may vary)
+        let expected_json1 = "Total is 42.13\nBy category:{\n  \"Groceries\": 27.83,\n  \"Sweets\": 14.3\n}";
+        let expected_json2 = "Total is 42.13\nBy category:{\n  \"Sweets\": 14.3,\n  \"Groceries\": 27.83\n}";
+
+        // Assertions: Check if the result matches either of the expected JSON strings
+        assert!(
+            json_string.trim() == expected_json1 || json_string.trim() == expected_json2,
+            "The output did not match either expected JSON string."
+        );
 
         // Clean up the test file
         std::fs::remove_file(test_file_path).expect("Failed to delete test file");
+
+        assert_eq!(process_data_from_file(test_file_path), "")
     }
 }
