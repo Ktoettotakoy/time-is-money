@@ -1,62 +1,89 @@
 use std::{collections::HashMap, fs::File, io::Read, path::Path};
 
-pub fn process_data_from_file(filepath: &str) -> String {
-    
-    let expenses_map = put_data_into_hashmap(filepath);
-    let mut sum = 0.0;
-    if let Some(mut expenses) = expenses_map{
-        for (_category, total) in expenses.iter_mut() {
-            sum += *total;
+pub fn show_debug_data_from_file(filepath: &str) -> String {
+    if let Some(data) = read_txt_file_to_string(filepath) {
+        if let Some(expenses_map) = put_data_into_hashmap(&data) {
+            let sum: f64 = expenses_map.values().sum();
+
+            let result = format!(
+                "Total is {:.2}\nBy category:\n{}",
+                sum,
+                serde_json::to_string_pretty(&expenses_map).unwrap_or_else(|_| "Error serializing to JSON".to_string())
+            );
+
+            return result;
         }
-
-        let mut result = format!("Total is {:.2}\nBy category:", (sum * 100.0).round() / 100.0);
-        // println!("Total is {:.2}\nBy category:", (sum * 100.0).round() / 100.0);
-        
-        // Serialize the HashMap to JSON format
-        let json_expenses = serde_json::to_string_pretty(&expenses).unwrap();
-        
-        result += &json_expenses;
-        result
-    } else {
-        "".to_string()
     }
-
+    "".to_string()
 }
 
-fn put_data_into_hashmap(filepath: &str) -> Option<HashMap<String, f64>> {
-    let mut expenses_by_category: HashMap<String, f64> = HashMap::new();
-    
+struct ExpensesEntry {
+    year: i32,
+    month: String,
+    expenses_data: HashMap<String, f64>
+}
+
+fn wrap_into_exp_entry_struct(filepath: &str) -> Option<ExpensesEntry> {
     if let Some(data) = read_txt_file_to_string(filepath) {
         let mut lines = data.lines();
         
-        // Skip the first line (month name)
-        let _month = lines.next();
-        
-        let mut current_category = String::new();
-        for line in lines {
-            let trimmed_line = line.trim();
-            if trimmed_line.is_empty() {
-                continue; // Skip empty lines
+        // Assume the first line contains the month and year in the format "Month Year"
+        if let Some(meta_data) = lines.next() {
+            let parts: Vec<&str> = meta_data.split_whitespace().collect();
+            if parts.len() < 2 {
+                return None; // If there's not enough data, return None
             }
 
-            if let Ok(amount) = trimmed_line.parse::<f64>() {
-                // If the line is a number, add it to the current category total
-                if !current_category.is_empty() {
-                    *expenses_by_category.entry(current_category.clone()).or_insert(0.0) += amount;
-                }
-            } else {
-                // If the line is not a number, it’s a new category
-                current_category = trimmed_line.to_string();
-            }
+            let month = parts[0].to_string();
+            let year = parts[1].parse::<i32>().ok()?;
+
+            let expenses_data = put_data_into_hashmap(&data)?;
+
+            return Some(ExpensesEntry {
+                year,
+                month,
+                expenses_data,
+            });
+        }
+    }
+
+    None
+}
+
+fn put_data_into_hashmap(data: &str) -> Option<HashMap<String, f64>> {
+    let mut expenses_by_category: HashMap<String, f64> = HashMap::new();
+    let mut lines = data.lines();
+    
+    // Skip the first line (month and year)
+    let _meta_data = lines.next();
+
+    let mut current_category = String::new();
+    for line in lines {
+        let trimmed_line = line.trim();
+        if trimmed_line.is_empty() {
+            continue; // Skip empty lines
         }
 
-        // Round each total to two decimal places
-        for value in expenses_by_category.values_mut() {
-            *value = (*value * 100.0).round() / 100.0;
+        if let Ok(amount) = trimmed_line.parse::<f64>() {
+            // If the line is a number, add it to the current category total
+            if !current_category.is_empty() {
+                *expenses_by_category.entry(current_category.clone()).or_insert(0.0) += amount;
+            }
+        } else {
+            // If the line is not a number, it’s a new category
+            current_category = trimmed_line.to_string();
         }
-        Some(expenses_by_category)
-    } else {
+    }
+
+    // Round each total to two decimal places
+    for value in expenses_by_category.values_mut() {
+        *value = (*value * 100.0).round() / 100.0;
+    }
+
+    if expenses_by_category.is_empty() {
         None
+    } else {
+        Some(expenses_by_category)
     }
 }
 
@@ -138,11 +165,10 @@ mod tests {
             write(test_file_path, contents).expect("File write is failed");
         }
 
-        let json_string = process_data_from_file(test_file_path);
-
+        let json_string = show_debug_data_from_file(test_file_path);
         // Expected JSON strings (order may vary)
-        let expected_json1 = "Total is 42.13\nBy category:{\n  \"Groceries\": 27.83,\n  \"Sweets\": 14.3\n}";
-        let expected_json2 = "Total is 42.13\nBy category:{\n  \"Sweets\": 14.3,\n  \"Groceries\": 27.83\n}";
+        let expected_json1 = "Total is 42.13\nBy category:\n{\n  \"Groceries\": 27.83,\n  \"Sweets\": 14.3\n}";
+        let expected_json2 = "Total is 42.13\nBy category:\n{\n  \"Sweets\": 14.3,\n  \"Groceries\": 27.83\n}";
 
         // Assertions: Check if the result matches either of the expected JSON strings
         assert!(
@@ -153,6 +179,6 @@ mod tests {
         // Clean up the test file
         std::fs::remove_file(test_file_path).expect("Failed to delete test file");
 
-        assert_eq!(process_data_from_file(test_file_path), "")
+        assert_eq!(show_debug_data_from_file(test_file_path), "")
     }
 }

@@ -1,4 +1,4 @@
-use acc_app::file_handlers::txt_handlers::process_data_from_file;
+use acc_app::file_handlers::txt_handlers::show_debug_data_from_file;
 use rfd::FileDialog;
 
 slint::include_modules!();
@@ -25,7 +25,7 @@ fn main() -> Result<(), slint::PlatformError> {
             let filepath = shared.as_str();
             println!("{}", filepath);
             
-            let res = process_data_from_file(filepath);
+            let res = show_debug_data_from_file(filepath);
             println!("{}",res);
         }
     });
