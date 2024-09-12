@@ -6,24 +6,25 @@ pub fn show_debug_data_from_file(filepath: &str) -> String {
             let sum: f64 = expenses_map.values().sum();
 
             let result = format!(
-                "Total is {:.2}\nBy category:\n{}",
-                sum,
+                "Total is {:.2}\nBy category:\n{}", sum,
                 serde_json::to_string_pretty(&expenses_map).unwrap_or_else(|_| "Error serializing to JSON".to_string())
             );
 
             return result;
         }
     }
-    "".to_string()
+    "".to_string() // return nothing
 }
 
-struct ExpensesEntry {
+// struct (me) that is used to correctly locate and insert data into excel
+pub struct MonthExpenses {
     year: i32,
     month: String,
     expenses_data: HashMap<String, f64>
 }
 
-fn wrap_into_exp_entry_struct(filepath: &str) -> Option<ExpensesEntry> {
+// receives filepath as input and transforms data from the file into format I want
+pub fn transform_file_into_me_struct(filepath: &str) -> Option<MonthExpenses> {
     if let Some(data) = read_txt_file_to_string(filepath) {
         let mut lines = data.lines();
         
@@ -37,19 +38,24 @@ fn wrap_into_exp_entry_struct(filepath: &str) -> Option<ExpensesEntry> {
             let month = parts[0].to_string();
             let year = parts[1].parse::<i32>().ok()?;
 
-            let expenses_data = put_data_into_hashmap(&data)?;
-
-            return Some(ExpensesEntry {
-                year,
-                month,
-                expenses_data,
-            });
+            if let Some(expenses_data) = put_data_into_hashmap(&data){
+                return Some(MonthExpenses {
+                    year,
+                    month,
+                    expenses_data,
+                });
+            }
         }
     }
 
     None
 }
 
+// receives string slice with expected structure: 
+//  first line meta_data (month, year) not important 
+//  other lines should have format: 
+//      string (category) or float (expenses) or empty line (delimiter)
+// there can be multiple entries of expenses followed by delimiter and next category after it 
 fn put_data_into_hashmap(data: &str) -> Option<HashMap<String, f64>> {
     let mut expenses_by_category: HashMap<String, f64> = HashMap::new();
     let mut lines = data.lines();
@@ -87,6 +93,8 @@ fn put_data_into_hashmap(data: &str) -> Option<HashMap<String, f64>> {
     }
 }
 
+
+// reads .txt file, converts it to huge string which is then passed
 fn read_txt_file_to_string(filepath: &str) -> Option<String> {
     let mut buffer = String::new();
 

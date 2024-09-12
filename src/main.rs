@@ -1,4 +1,5 @@
 use acc_app::file_handlers::txt_handlers::show_debug_data_from_file;
+use acc_app::file_handlers::txt_handlers::transform_file_into_me_struct;
 use rfd::FileDialog;
 
 slint::include_modules!();
@@ -20,13 +21,25 @@ fn main() -> Result<(), slint::PlatformError> {
         move || {
             let ui = ui_handle.unwrap();
             
-            let shared = ui.get_filepath();
-            
-            let filepath = shared.as_str();
+            let tmp = ui.get_filepath();
+            let filepath = tmp.as_str();
+
             println!("{}", filepath);
-            
             let res = show_debug_data_from_file(filepath);
             println!("{}",res);
+        }
+    });
+
+    ui.on_put_me_into_excel({
+        let ui_handle = ui.as_weak();
+        move || {
+            let ui = ui_handle.unwrap();
+            
+            let tmp = ui.get_filepath();
+            let filepath = tmp.as_str();
+
+            let _ee_struct = transform_file_into_me_struct(filepath);
+            // not finished
         }
     });
 

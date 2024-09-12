@@ -8,6 +8,7 @@ export component AppWindow inherits Window {
 
     callback request-acc-data();
     callback choose-file();
+    callback put_me_into_excel();
     property <bool> file-chosen: false;
     in property <string> filename;
     in-out property <string> filepath;
