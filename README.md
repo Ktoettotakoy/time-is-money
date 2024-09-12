@@ -13,8 +13,9 @@ So I came up with a wonderful idea to create a GUI app that would save me 2-5 mi
 ### Project Outcomes
 After finishing the app, I expect to:
 - Finally use Rust for something (though not low-level yet)
-- Learn more about GUI libraries for Rust
 - Read a lot of documentation
+- Finally have a test coverage
+- Learn more about GUI libraries for Rust
 - Become a better designer
 - Prove that stats modules at university are not useless
 - Gain more practice with data visualization
