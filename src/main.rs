@@ -1,5 +1,6 @@
 use acc_app::file_handlers::txt_handlers::show_debug_data_from_file;
 use acc_app::file_handlers::txt_handlers::transform_file_into_me_struct;
+use acc_app::file_handlers::xls_handlers::xls_insert_monthly_expense;
 use rfd::FileDialog;
 
 slint::include_modules!();
@@ -30,6 +31,7 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
+    // put monthly expenses into excel hook
     ui.on_put_me_into_excel({
         let ui_handle = ui.as_weak();
         move || {
@@ -38,7 +40,9 @@ fn main() -> Result<(), slint::PlatformError> {
             let tmp = ui.get_filepath();
             let filepath = tmp.as_str();
 
-            let _ee_struct = transform_file_into_me_struct(filepath);
+            if let Some(me) = transform_file_into_me_struct(filepath){
+                let _success = xls_insert_monthly_expense(me);
+            }
             // not finished
         }
     });

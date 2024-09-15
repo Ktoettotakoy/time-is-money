@@ -10,6 +10,7 @@ build = "build.rs"
 serde_json = "1.0.127"
 slint = "1.6"
 rfd = "0.14.1"
+calamine = "0.19"
 
 [build-dependencies]
 slint-build = "1.6"
