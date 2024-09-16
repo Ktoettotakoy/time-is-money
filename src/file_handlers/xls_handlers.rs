@@ -8,6 +8,8 @@ const YEAR_MONTH_COLUMN: u32 = 2; // index of column "C" (A = 0 B = 1)
 const STARTING_ROW: u32 = 1; // starting position of a table. (row 1 = pos 0, row 2 = pos 1)
 const WORKBOOK_PATH: &str = "src/data/test_file.xlsx"; // hardcoded for now (?)
 
+// TODO! replace hardcoded workbook path with a variable in xls_insert_monthly_expenses 
+// create workbook and pass it to other functions
 
 // function which executes all logic of this file 
 // returns true if file was modified successfully
@@ -24,10 +26,37 @@ fn xls_put_expenses(expenses_data: HashMap<String, f64>){
     !unimplemented!()
 }
 
+// Function to extract categories from a specific row in the Excel file
+fn xls_categories_to_vec(row: u32) -> Option<Vec<String>> {
+    let mut categories: Vec<String> = Vec::new();
+    let mut workbook: Xlsx<_> = open_workbook(WORKBOOK_PATH).expect("Cannot open file");
 
-// returns the ordered vector of categories present in expenses tracking xls file
-fn xls_categories_to_vec(row: i32) -> Option<Vec<String>>{
-    !unimplemented!()
+    if let Some(Ok(range)) = workbook.worksheet_range("Sheet1") {
+        // Iterate through the columns in the specified row
+        let mut col = YEAR_MONTH_COLUMN + 1;
+        while let Some(cell) = range.get_value((row, col)) {
+            match cell {
+                DataType::String(category) => {
+                    // Add category to the vector
+                    categories.push(category.clone());  
+                }
+                DataType::Empty => {
+                    // Stop when an empty cell is encountered
+                    break;  
+                }
+                _ => {
+                    println!("Category type mismatch {:?}", cell);
+                    return None;
+                }
+            }
+            col += 1;
+        }
+        if !categories.is_empty(){
+            return Some(categories);
+        }
+    }
+
+    None
 }
 
 
@@ -94,20 +123,15 @@ mod tests {
         // and starting position of tables is (1,2) - (row 2 column C)
 
         // here is the test table I use
-        //2023	    Groceries 	Sweets	Restaurants (2023 is located at row 2 column C)
-        //January	202.70	    40.45	98.30
-        //February	219.82	    52.80	8.80
-        //March	    273.33	    69.58	134.25
-        //April	    391.32	    66.12	28.75
-        //May	    363.26	    65.20	15.00
-        //June	    245.18	    59.88	168.38
-        //July	    168.49	    54.40	252.00
-        //August	243.58	    54.58	77.98
-        //September			
-        //October			
-        //November			
-        //December			
-        // + number 2026 at row 32 column C and number 2024 at row 17 column C
+        // |   C       |   D       |   E           |
+        // |-----------|-----------|---------------|
+        // | 2023      | Groceries | Sweets        | Restaurants |
+        // | January   | 202.70    | 40.45         | 98.30       |
+        // | February  | 219.82    | 52.80         | 8.80        |
+        // | ...       | ...       | ...           | ...         |
+        // | 2024      | ...       | ...           | ...         |   (Row 17, Column C)
+        // | ...       | ...       | ...           | ...         |
+        // | 2026      | ...       | ...           | ...         |   (Row 32, Column C)
 
         // check the present year in a test_file
         let mut year_to_find = 2026;
@@ -121,6 +145,42 @@ mod tests {
         year_to_find = 2022;
         let result = xls_find_year_entry_row_number(YEAR_MONTH_COLUMN, year_to_find);
         // expect None
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_xls_categories_to_vec(){
+
+        // this test assumes that we have a file src/data/test_file.xlsx
+        // and starting position of tables is (1,2) - (row 2 column C)
+
+        // here is the test table I use
+        // |   C       |   D       |   E           |
+        // |-----------|-----------|---------------|
+        // | 2023      | Groceries | Sweets        | Restaurants |
+        // | January   | 202.70    | 40.45         | 98.30       |
+        // | February  | 219.82    | 52.80         | 8.80        |
+        // | ...       | ...       | ...           | ...         |
+        // | 2024      | ...       | ...           | ...         |   (Row 17, Column C)
+        // | ...       | ...       | ...           | ...         |        
+        // | 2026      | ...       | ...           | ...         |   (Row 32, Column C)
+
+
+        let mut row = 1; // choose row number 2 with desired data
+        let result = xls_categories_to_vec(row);
+        assert!(result.is_some());
+
+        // compare expected with actual
+        let expected_categories = vec![
+            "Groceries".to_string(),
+            "Sweets".to_string(),
+            "Restaurants".to_string(),
+        ];
+        let actual_categories = result.unwrap();
+        assert_eq!(actual_categories, expected_categories);
+
+        row = 0; // choose row with incorrect data
+        let result = xls_categories_to_vec(row);
         assert!(result.is_none());
     }
 }
