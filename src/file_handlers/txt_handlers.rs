@@ -1,4 +1,5 @@
 use std::{collections::HashMap, fs::File, io::Read, path::Path};
+use crate::utils::structs::MonthExpenses;
 
 pub fn show_debug_data_from_file(filepath: &str) -> String {
     if let Some(data) = read_txt_file_to_string(filepath) {
@@ -16,13 +17,6 @@ pub fn show_debug_data_from_file(filepath: &str) -> String {
     "".to_string() // return nothing
 }
 
-// struct (me) that is used to correctly locate and insert data into excel
-pub struct MonthExpenses {
-    year: i32,
-    month: String,
-    expenses_data: HashMap<String, f64>
-}
-
 // receives filepath as input and transforms data from the file into format I want
 pub fn transform_file_into_me_struct(filepath: &str) -> Option<MonthExpenses> {
     if let Some(data) = read_txt_file_to_string(filepath) {
@@ -36,7 +30,7 @@ pub fn transform_file_into_me_struct(filepath: &str) -> Option<MonthExpenses> {
             }
 
             let month = parts[0].to_string();
-            let year = parts[1].parse::<i32>().ok()?;
+            let year = parts[1].parse::<i64>().ok()?;
 
             if let Some(expenses_data) = put_data_into_hashmap(&data){
                 return Some(MonthExpenses {

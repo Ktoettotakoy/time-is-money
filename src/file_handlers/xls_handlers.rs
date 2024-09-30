@@ -1,30 +1,91 @@
-use std::{any::Any, collections::HashMap};
-
 use calamine::{open_workbook, DataType, Reader, Xlsx};
+use xlsxwriter::prelude::*;
 
-use crate::file_handlers::txt_handlers::MonthExpenses;
+use crate::utils::structs::MonthExpenses;
 
 const YEAR_MONTH_COLUMN: u32 = 2; // index of column "C" (A = 0 B = 1)
 const STARTING_ROW: u32 = 1; // starting position of a table. (row 1 = pos 0, row 2 = pos 1)
 const WORKBOOK_PATH: &str = "src/data/test_file.xlsx"; // hardcoded for now (?)
+const NEW_WORKBOOK_PATH: &str = "src/data/test_file_new.xlsx"; // hardcoded for test
 
 // TODO! replace hardcoded workbook path with a variable in xls_insert_monthly_expenses 
 // create workbook and pass it to other functions
 
-// function which executes all logic of this file 
-// returns true if file was modified successfully
-pub fn xls_insert_monthly_expense(me: MonthExpenses) -> bool{
+// function has to unite existing .xlsx file and newly crated "mask" sheet 
+// in order to fulfil main purpose - allow me inserting data using one click into the 
+// excel spreadsheet
+
+// returns true if success
+pub fn xls_perform_workbook_update(me: MonthExpenses){
     !unimplemented!()
 }
+
+// function which inserts data in a correct position in a new "mask" workbook
+// due to xlsxwriter restrictions
+// returns true if file was created successfully
+pub fn xls_insert_monthly_expense_entry_in_a_new_workbook(me: MonthExpenses) -> bool {
+    let year_to_find = me.year;
+    let month_to_find = me.month;
+    let expenses_data = me.expenses_data;
+        
+        // Find the row for the given year
+        if let Some(year_row) = xls_find_year_entry_row_number(YEAR_MONTH_COLUMN, year_to_find) {
+            
+            // Find the correct row for the month
+            if let Some(month_row) = xls_find_month_entry_row_number(year_row, month_to_find) {
+                
+                // Get categories from the same row
+                if let Some(categories) = xls_categories_to_vec(year_row) {
+
+                    // Create a new workbook for writing (xlsxwriter cannot modify existing files directly)
+                    let write_workbook_result: Result<Workbook, XlsxError> = Workbook::new(NEW_WORKBOOK_PATH);
+                    match write_workbook_result{
+                        Ok( workbook_result) => {
+                            
+                            let sheet_result = workbook_result.add_worksheet(Some("Sheet1"));
+
+                            match sheet_result {
+                                Ok(mut sheet) => {
+                                    // Loop through the categories and insert data from the hashmap
+                                    for (col, category) in categories.iter().enumerate() {
+                                        if let Some(expense) = expenses_data.get(category) {
+                                            // Insert expense into the corresponding column
+                                            sheet.write_number(
+                                                month_row as u32,
+                                            col as u16 + YEAR_MONTH_COLUMN as u16 + 1,
+                                        *expense, None).expect("Cannot write expense");
+                                        }
+                                    }
+                                    
+                                    // Save the new workbook with changes
+                                    workbook_result.close().expect("Cannot save file");
+                                    return true;
+                                }
+                                Err(e) => {
+                                    println!("Failed to add sheet: {:?}", e);
+                                    return false
+                                }
+                            }
+                            
+
+                        }
+                        Err(e) => {
+                            println!("Failed to add worksheet: {:?}", e);
+                            return false
+                        }
+                    }
+                    
+
+
+                }
+            }
+        }
+    false
+}
+
 
 
 // To improve the performance I could do indexing first to avoid String comparisons
-
-// stores data from expenses hashmap into the correct columns by category
-// (order in Excel file may vary and hashmap don't care about ordering as well)
-fn xls_put_expenses(expenses_data: HashMap<String, f64>){
-    !unimplemented!()
-}
 
 // Function to extract categories from a specific row in the Excel file
 fn xls_categories_to_vec(row: u32) -> Option<Vec<String>> {
@@ -69,10 +130,10 @@ fn xls_categories_to_vec(row: u32) -> Option<Vec<String>> {
 // returns row number of correct year entry
 fn xls_find_year_entry_row_number(column: u32, year_to_find: i64) -> Option<u32> {
    
-   // opens a new workbook
-   let mut workbook: Xlsx<_> = open_workbook(WORKBOOK_PATH).expect("Cannot open file");
+    // opens a new workbook
+    let mut workbook: Xlsx<_> = open_workbook(WORKBOOK_PATH).expect("Cannot open file");
 
-   // Read whole worksheet data
+    // Read whole worksheet data
     if let Some(Ok(range)) = workbook.worksheet_range("Sheet1") {
         let mut row_number: u32 = STARTING_ROW;
         
@@ -111,10 +172,44 @@ fn xls_find_year_entry_row_number(column: u32, year_to_find: i64) -> Option<u32>
     None  
 }
 
+// There exists column C which contains 
+// year (int) followed by 12 month (String) = (13 rows).
+// Each year is separated with 2 blank lines.
+// So starting from base row and column I can reach any next year 
+// shifting row number by 15
+
+// returns row number of correct month entry based on starting row (year)
+fn xls_find_month_entry_row_number(year_row: u32, month_to_find: String) -> Option<u32> {
+    let month_to_find = month_to_find.as_str();
+    // Mapping months directly to their index
+    let month_index = match month_to_find {
+        "January" => 1,
+        "February" => 2,
+        "March" => 3,
+        "April" => 4,
+        "May" => 5,
+        "June" => 6,
+        "July" => 7,
+        "August" => 8,
+        "September" => 9,
+        "October" => 10,
+        "November" => 11,
+        "December" => 12,
+        _ => return None, // If the month is not valid, return None
+        // in future I can add here string default output that would notify me that 
+        // month in my .txt file has a typo or I messed up my format
+    };
+
+    // Since each month is in a fixed row order, we can directly calculate the row number
+    Some(year_row + month_index as u32)
+}
+
+
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
 
     #[test]
     fn test_xls_find_year_entry_row_number(){
@@ -146,6 +241,27 @@ mod tests {
         let result = xls_find_year_entry_row_number(YEAR_MONTH_COLUMN, year_to_find);
         // expect None
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_xls_find_month_entry_row_number() {
+        // This test assumes we have a file src/data/test_file.xlsx
+        // with a valid year_row for testing purposes.
+        let year_row = 1; // Example starting row for 2023
+
+        // Test for a valid month
+        let month_to_find = "January".to_string();
+        let result = xls_find_month_entry_row_number(year_row, month_to_find);
+        assert_eq!(result, Some(2)); // January should be in row 2 (year_row + 1)
+
+        let month_to_find = "February".to_string();
+        let result = xls_find_month_entry_row_number(year_row, month_to_find);
+        assert_eq!(result, Some(3)); // February should be in row 3 (year_row + 2)
+
+        // Test for an invalid month
+        let month_to_find = "InvalidMonth".to_string();
+        let result = xls_find_month_entry_row_number(year_row, month_to_find);
+        assert!(result.is_none()); // Should return None for an invalid month
     }
 
     #[test]
@@ -182,5 +298,36 @@ mod tests {
         row = 0; // choose row with incorrect data
         let result = xls_categories_to_vec(row);
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_xls_insert_monthly_expense_entry() {
+        // Prepare a sample MonthExpenses object
+        let month_expenses = MonthExpenses {
+            year: 2023,
+            month: "January".to_string(),
+            expenses_data: {
+                let mut data = HashMap::new();
+                data.insert("Groceries".to_string(), 150.00);
+                data.insert("Other".to_string(), 75.50);
+                data.insert("Sweets".to_string(), 50.00);
+                data
+            },
+        };
+
+        // Call the function to insert monthly expense entry
+        let result = xls_insert_monthly_expense_entry_in_a_new_workbook(month_expenses);
+        
+        // Check if the function returned true
+        assert!(result);
+
+        // Note this test should be verified manually to simplify the test.
+        // Don't forget to delete new file before running the test again 
+        // otherwise it can get falsely result, but generally it is impossible to 
+        // break it until you use correct input format for .txt and existing .xls 
+
+        // Since xlsxwriter doesn't allow modifying existing files,
+        // test should create new file-mask that has to be used later on
+        // to combine 2 files (workbooks join :D): existing and new
     }
 }
