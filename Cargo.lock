@@ -23,10 +23,12 @@ name = "acc-app"
 version = "0.1.0"
 dependencies = [
  "calamine",
+ "chrono",
  "rfd",
  "serde_json",
  "slint",
  "slint-build",
+ "tempfile",
  "xlsxwriter",
 ]
 

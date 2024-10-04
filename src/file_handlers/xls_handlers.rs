@@ -1,44 +1,62 @@
 use calamine::{open_workbook, DataType, Reader, Xlsx};
 use xlsxwriter::prelude::*;
+use std::path::Path;
 
+use crate::utils::folder_file_utils::{ prepare_folder_structure, get_latest_backup};
 use crate::utils::structs::MonthExpenses;
 
-const YEAR_MONTH_COLUMN: u32 = 2; // index of column "C" (A = 0 B = 1)
+const YEAR_MONTH_COLUMN: u32 = 1; // index of column "C" (A = 0 B = 1)
 const STARTING_ROW: u32 = 1; // starting position of a table. (row 1 = pos 0, row 2 = pos 1)
-const WORKBOOK_PATH: &str = "src/data/test_file_result.xlsx"; // hardcoded for now (?)
-const WORKBOOK_PATH_LAST_BACK_UP: &str = "src/data/test_existing_workbook.xlsx"; // hardcoded for now (?)
-const NEW_WORKBOOK_PATH: &str = "src/data/test_mask_workbook.xlsx"; // hardcoded for test
+
+const TMP_FOLDER: &str = "tmp";
+const TMP_WORKBOOK_NAME: &str = "tmp_mask.xlsx"; // hardcoded for test
+const RES_WORKBOOK_NAME: &str = "myAccTest.xlsx"; // hardcoded for test
 
 // TODO! replace hardcoded workbook path with a variable in xls_insert_monthly_expenses 
-// create workbook and pass it to other functions
 
 // function has to unite existing .xlsx file and newly crated "mask" sheet 
 // in order to fulfil main purpose - allow me inserting data using one click into the 
 // excel spreadsheet
 
 // returns true if success
-pub fn xls_perform_workbook_update(me: MonthExpenses) -> bool{
-    let backup_workbook_path = WORKBOOK_PATH_LAST_BACK_UP;
-    let new_workbook_path = NEW_WORKBOOK_PATH;
+pub fn xls_perform_workbook_update(me: MonthExpenses, destination_path: &str) -> bool{
     
+    if let Err(e) = prepare_folder_structure(destination_path, RES_WORKBOOK_NAME) {
+        println!("Error preparing folder structure: {:?}", e);
+        return false;
+    }
+    
+    // Prepare paths for backup and temp workbooks
+    let result_workbook_path = Path::new(destination_path).join(RES_WORKBOOK_NAME);
+    let backup_workbook_path = get_latest_backup(destination_path).expect("Failed to get latest backup");
+    let tmp_workbook_path = Path::new(destination_path).join(TMP_FOLDER).join(TMP_WORKBOOK_NAME);
+    
+    
+    // convert path to &str
+    let backup_workbook_path_str = backup_workbook_path.to_str().unwrap();
+    let tmp_workbook_path_str = tmp_workbook_path.to_str().unwrap();
+    let result_workbook_path_str = result_workbook_path.to_str().unwrap();
+
     // Insert the new expense data into the "mask" workbook
-    if !xls_insert_monthly_expense_entry_in_a_new_workbook(me.clone(), backup_workbook_path) {
+    if !xls_insert_monthly_expense_entry_in_a_new_workbook(me.clone(), backup_workbook_path_str, tmp_workbook_path_str) {
         println!("Failed to create 'mask' workbook with new data.");
         return false;
     }
     
+    
     // Open the existing workbook
-    let mut existing_workbook: Xlsx<_> = open_workbook(backup_workbook_path).expect("Cannot open existing workbook");
-
+    let mut existing_workbook: Xlsx<_> = open_workbook(backup_workbook_path_str).expect("Cannot open existing workbook");
+    
     // Open the newly created "mask" workbook
-    let mut new_workbook: Xlsx<_> = open_workbook(new_workbook_path).expect("Cannot open 'mask' workbook");
-
+    let mut new_workbook: Xlsx<_> = open_workbook(tmp_workbook_path_str).expect("Cannot open 'mask' workbook");
+    
     // Create a new workbook to store the merged data
-    let write_workbook_result: Result<Workbook, XlsxError> = Workbook::new(WORKBOOK_PATH);
+    let write_workbook_result: Result<Workbook, XlsxError> = Workbook::new(result_workbook_path_str);
+    
     match write_workbook_result {
         Ok(merged_workbook) => {
             // Create a new sheet in the merged workbook
-            let sheet_result = merged_workbook.add_worksheet(Some("dataInput"));
+            let sheet_result = merged_workbook.add_worksheet(Some("Sheet1"));
 
             match sheet_result {
                 Ok(mut sheet) => {
@@ -108,58 +126,58 @@ pub fn xls_perform_workbook_update(me: MonthExpenses) -> bool{
 // function which inserts data in a correct position in a new "mask" workbook
 // due to xlsxwriter restrictions
 // returns true if file was created successfully
-pub fn xls_insert_monthly_expense_entry_in_a_new_workbook(me: MonthExpenses, path_to_back_up_workbook: &str) -> bool {
+pub fn xls_insert_monthly_expense_entry_in_a_new_workbook(me: MonthExpenses, path_to_back_up_workbook: &str, path_to_tmp_workbook: &str) -> bool {
     let year_to_find = me.year;
     let month_to_find = me.month;
     let expenses_data = me.expenses_data;
+    
+    // Find the row for the given year
+    if let Some(year_row) = xls_find_year_entry_row_number(YEAR_MONTH_COLUMN, year_to_find, path_to_back_up_workbook) {
         
-        // Find the row for the given year
-        if let Some(year_row) = xls_find_year_entry_row_number(YEAR_MONTH_COLUMN, year_to_find, path_to_back_up_workbook) {
+        // Find the correct row for the month
+        if let Some(month_row) = xls_find_month_entry_row_number(year_row, month_to_find) {
             
-            // Find the correct row for the month
-            if let Some(month_row) = xls_find_month_entry_row_number(year_row, month_to_find) {
-                
-                // Get categories from the same row
-                if let Some(categories) = xls_categories_to_vec(year_row) {
+            // Get categories from the same row
+            if let Some(categories) = xls_categories_to_vec(year_row, path_to_back_up_workbook) {
 
-                    // Create a new workbook for writing (xlsxwriter cannot modify existing files directly)
-                    let write_workbook_result: Result<Workbook, XlsxError> = Workbook::new(NEW_WORKBOOK_PATH);
-                    match write_workbook_result{
-                        Ok( workbook_result) => {
-                            
-                            let sheet_result = workbook_result.add_worksheet(Some("Sheet1"));
+                // Create a new workbook for writing (xlsxwriter cannot modify existing files directly)
+                let write_workbook_result: Result<Workbook, XlsxError> = Workbook::new(path_to_tmp_workbook);
+                match write_workbook_result{
+                    Ok( workbook_result) => {
+                        
+                        let sheet_result = workbook_result.add_worksheet(Some("Sheet1"));
 
-                            match sheet_result {
-                                Ok(mut sheet) => {
-                                    // Loop through the categories and insert data from the hashmap
-                                    for (col, category) in categories.iter().enumerate() {
-                                        if let Some(expense) = expenses_data.get(category) {
-                                            // Insert expense into the corresponding column
-                                            sheet.write_number(
-                                                month_row as u32,
-                                            col as u16 + YEAR_MONTH_COLUMN as u16 + 1,
-                                        *expense, None).expect("Cannot write expense");
-                                        }
+                        match sheet_result {
+                            Ok(mut sheet) => {
+                                // Loop through the categories and insert data from the hashmap
+                                for (col, category) in categories.iter().enumerate() {
+                                    if let Some(expense) = expenses_data.get(category) {
+                                        // Insert expense into the corresponding column
+                                        sheet.write_number(
+                                            month_row as u32,
+                                        col as u16 + YEAR_MONTH_COLUMN as u16 + 1,
+                                    *expense, None).expect("Cannot write expense");
                                     }
-                                    
-                                    // Save the new workbook with changes
-                                    workbook_result.close().expect("Cannot save file");
-                                    return true;
                                 }
-                                Err(e) => {
-                                    println!("Failed to add sheet: {:?}", e);
-                                    return false
-                                }
+                                
+                                // Save the new workbook with changes
+                                workbook_result.close().expect("Cannot save file");
+                                return true;
+                            }
+                            Err(e) => {
+                                println!("Failed to add sheet: {:?}", e);
+                                return false
                             }
                         }
-                        Err(e) => {
-                            println!("Failed to add worksheet: {:?}", e);
-                            return false
-                        }
+                    }
+                    Err(e) => {
+                        println!("Failed to add worksheet: {:?}", e);
+                        return false
                     }
                 }
             }
         }
+    }
     false
 }
 
@@ -168,9 +186,9 @@ pub fn xls_insert_monthly_expense_entry_in_a_new_workbook(me: MonthExpenses, pat
 // To improve the performance I could do indexing first to avoid String comparisons
 
 // Function to extract categories from a specific row in the Excel file
-fn xls_categories_to_vec(row: u32) -> Option<Vec<String>> {
+fn xls_categories_to_vec(row: u32, workbook_backup_path: &str) -> Option<Vec<String>> {
     let mut categories: Vec<String> = Vec::new();
-    let mut workbook: Xlsx<_> = open_workbook(WORKBOOK_PATH_LAST_BACK_UP).expect("Cannot open file");
+    let mut workbook: Xlsx<_> = open_workbook(workbook_backup_path).expect("Cannot open file");
 
     if let Some(Ok(range)) = workbook.worksheet_range("Sheet1") {
         // Iterate through the columns in the specified row
@@ -183,6 +201,7 @@ fn xls_categories_to_vec(row: u32) -> Option<Vec<String>> {
                 }
                 DataType::Empty => {
                     // Stop when an empty cell is encountered
+                    println!("Empty Cell");
                     break;  
                 }
                 _ => {
@@ -196,7 +215,7 @@ fn xls_categories_to_vec(row: u32) -> Option<Vec<String>> {
             return Some(categories);
         }
     }
-
+    println!("No Category found");
     None
 }
 
@@ -248,7 +267,7 @@ fn xls_find_year_entry_row_number(column: u32, year_to_find: i64, path_to_workbo
             row_number += 15;
         }
     }
-    
+    println!("No year found");
     None  
 }
 
@@ -290,6 +309,11 @@ fn xls_find_month_entry_row_number(year_row: u32, month_to_find: String) -> Opti
 mod tests {
     use super::*;
     use std::collections::HashMap;
+
+    // used for manual tests
+    const WORKBOOK_PATH: &str = "src/data/test_file_result.xlsx";
+    const WORKBOOK_PATH_LAST_BACK_UP: &str = "src/data/test_existing_workbook.xlsx";
+    const WORKBOOK_PATH_TPM: &str = "src/data/test_mask_workbook.xlsx";
 
     #[test]
     fn test_xls_find_year_entry_row_number(){
@@ -364,7 +388,7 @@ mod tests {
 
 
         let mut row = 1; // choose row number 2 with desired data
-        let result = xls_categories_to_vec(row);
+        let result = xls_categories_to_vec(row, WORKBOOK_PATH_LAST_BACK_UP);
         assert!(result.is_some());
 
         // compare expected with actual
@@ -377,7 +401,7 @@ mod tests {
         assert_eq!(actual_categories, expected_categories);
 
         row = 0; // choose row with incorrect data
-        let result = xls_categories_to_vec(row);
+        let result = xls_categories_to_vec(row, WORKBOOK_PATH_LAST_BACK_UP);
         assert!(result.is_none());
     }
 
@@ -397,7 +421,7 @@ mod tests {
         };
 
         // Call the function to insert monthly expense entry
-        let result = xls_insert_monthly_expense_entry_in_a_new_workbook(month_expenses, WORKBOOK_PATH_LAST_BACK_UP);
+        let result = xls_insert_monthly_expense_entry_in_a_new_workbook(month_expenses, WORKBOOK_PATH_LAST_BACK_UP, WORKBOOK_PATH_TPM);
         
         // Check if the function returned true
         assert!(result);
@@ -426,12 +450,10 @@ mod tests {
             },
         };
     
-        // let backup_workbook_path = "src/data/test_existing_workbook.xlsx";
-        // let new_workbook_path = "src/data/test_mask_workbook.xlsx";
-        // let merged_workbook_path = "src/data/test_merged_workbook.xlsx";
+        let destination = "src/data/final_test";
 
         // Step 3: Call the function
-        let result = xls_perform_workbook_update(month_expenses);
+        let result = xls_perform_workbook_update(month_expenses, destination);
     
         // Check if the function returned true (success)
         assert!(result, "xls_perform_workbook_update should return true on success");

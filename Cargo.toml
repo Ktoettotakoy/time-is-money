@@ -12,6 +12,8 @@ slint = "1.6"
 rfd = "0.14.1"
 calamine = "0.19"
 xlsxwriter = "0.6.1"
+chrono = "0.4"
+tempfile = "3.3"
 
 [build-dependencies]
 slint-build = "1.6"
