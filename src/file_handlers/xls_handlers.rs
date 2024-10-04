@@ -5,8 +5,9 @@ use crate::utils::structs::MonthExpenses;
 
 const YEAR_MONTH_COLUMN: u32 = 2; // index of column "C" (A = 0 B = 1)
 const STARTING_ROW: u32 = 1; // starting position of a table. (row 1 = pos 0, row 2 = pos 1)
-const WORKBOOK_PATH: &str = "src/data/test_file.xlsx"; // hardcoded for now (?)
-const NEW_WORKBOOK_PATH: &str = "src/data/test_file_new.xlsx"; // hardcoded for test
+const WORKBOOK_PATH: &str = "src/data/test_file_result.xlsx"; // hardcoded for now (?)
+const WORKBOOK_PATH_LAST_BACK_UP: &str = "src/data/test_existing_workbook.xlsx"; // hardcoded for now (?)
+const NEW_WORKBOOK_PATH: &str = "src/data/test_mask_workbook.xlsx"; // hardcoded for test
 
 // TODO! replace hardcoded workbook path with a variable in xls_insert_monthly_expenses 
 // create workbook and pass it to other functions
@@ -16,20 +17,104 @@ const NEW_WORKBOOK_PATH: &str = "src/data/test_file_new.xlsx"; // hardcoded for 
 // excel spreadsheet
 
 // returns true if success
-pub fn xls_perform_workbook_update(me: MonthExpenses){
-    !unimplemented!()
+pub fn xls_perform_workbook_update(me: MonthExpenses) -> bool{
+    let backup_workbook_path = WORKBOOK_PATH_LAST_BACK_UP;
+    let new_workbook_path = NEW_WORKBOOK_PATH;
+    
+    // Insert the new expense data into the "mask" workbook
+    if !xls_insert_monthly_expense_entry_in_a_new_workbook(me.clone(), backup_workbook_path) {
+        println!("Failed to create 'mask' workbook with new data.");
+        return false;
+    }
+    
+    // Open the existing workbook
+    let mut existing_workbook: Xlsx<_> = open_workbook(backup_workbook_path).expect("Cannot open existing workbook");
+
+    // Open the newly created "mask" workbook
+    let mut new_workbook: Xlsx<_> = open_workbook(new_workbook_path).expect("Cannot open 'mask' workbook");
+
+    // Create a new workbook to store the merged data
+    let write_workbook_result: Result<Workbook, XlsxError> = Workbook::new(WORKBOOK_PATH);
+    match write_workbook_result {
+        Ok(merged_workbook) => {
+            // Create a new sheet in the merged workbook
+            let sheet_result = merged_workbook.add_worksheet(Some("dataInput"));
+
+            match sheet_result {
+                Ok(mut sheet) => {
+                    // Iterate over the Existing data and copy it to the new workbook
+                    if let Some(Ok(existing_range)) = existing_workbook.worksheet_range("Sheet1") {
+                        for row in 0..existing_range.height() {
+                            for col in 0..existing_range.width() {
+                                if let Some(cell) = existing_range.get_value((row as u32, col as u32)) {
+                                    // Copy cell from existing workbook
+                                    match cell {
+                                        DataType::String(val) => {
+                                            sheet.write_string(row as u32, col as u16, val, None).expect("Failed to write string");
+                                        }
+                                        DataType::Float(val) => {
+                                            sheet.write_number(row as u32, col as u16, *val, None).expect("Failed to write number");
+                                        }
+                                        DataType::Int(val) => {
+                                            sheet.write_number(row as u32, col as u16, *val as f64, None).expect("Failed to write int");
+                                        }
+                                        _ => {} // Handle other data types as necessary
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Merge the "mask" workbook data into the new workbook
+                    if let Some(Ok(new_range)) = new_workbook.worksheet_range("Sheet1") {
+                        for row in 0..new_range.height() {
+                            for col in 0..new_range.width() {
+                                if let Some(cell) = new_range.get_value((row as u32, col as u32)) {
+                                    // If the cell contains new data from the "mask", insert it
+                                    match cell {
+                                        DataType::String(val) => {
+                                            sheet.write_string(row as u32, col as u16, val, None).expect("Failed to write string from mask");
+                                        }
+                                        DataType::Float(val) => {
+                                            sheet.write_number(row as u32, col as u16, *val, None).expect("Failed to write number from mask");
+                                        }
+                                        DataType::Int(val) => {
+                                            sheet.write_number(row as u32, col as u16, *val as f64, None).expect("Failed to write int from mask");
+                                        }
+                                        _ => {} // Handle other data types as necessary
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Save the merged workbook with changes
+                    merged_workbook.close().expect("Cannot save merged workbook");
+                    return true;
+                }
+                Err(e) => {
+                    println!("Failed to add sheet to the merged workbook: {:?}", e);
+                    return false;
+                }
+            }
+        }
+        Err(e) => {
+            println!("Failed to create new merged workbook: {:?}", e);
+            return false;
+        }
+    }
 }
 
 // function which inserts data in a correct position in a new "mask" workbook
 // due to xlsxwriter restrictions
 // returns true if file was created successfully
-pub fn xls_insert_monthly_expense_entry_in_a_new_workbook(me: MonthExpenses) -> bool {
+pub fn xls_insert_monthly_expense_entry_in_a_new_workbook(me: MonthExpenses, path_to_back_up_workbook: &str) -> bool {
     let year_to_find = me.year;
     let month_to_find = me.month;
     let expenses_data = me.expenses_data;
         
         // Find the row for the given year
-        if let Some(year_row) = xls_find_year_entry_row_number(YEAR_MONTH_COLUMN, year_to_find) {
+        if let Some(year_row) = xls_find_year_entry_row_number(YEAR_MONTH_COLUMN, year_to_find, path_to_back_up_workbook) {
             
             // Find the correct row for the month
             if let Some(month_row) = xls_find_month_entry_row_number(year_row, month_to_find) {
@@ -66,17 +151,12 @@ pub fn xls_insert_monthly_expense_entry_in_a_new_workbook(me: MonthExpenses) -> 
                                     return false
                                 }
                             }
-                            
-
                         }
                         Err(e) => {
                             println!("Failed to add worksheet: {:?}", e);
                             return false
                         }
                     }
-                    
-
-
                 }
             }
         }
@@ -90,7 +170,7 @@ pub fn xls_insert_monthly_expense_entry_in_a_new_workbook(me: MonthExpenses) -> 
 // Function to extract categories from a specific row in the Excel file
 fn xls_categories_to_vec(row: u32) -> Option<Vec<String>> {
     let mut categories: Vec<String> = Vec::new();
-    let mut workbook: Xlsx<_> = open_workbook(WORKBOOK_PATH).expect("Cannot open file");
+    let mut workbook: Xlsx<_> = open_workbook(WORKBOOK_PATH_LAST_BACK_UP).expect("Cannot open file");
 
     if let Some(Ok(range)) = workbook.worksheet_range("Sheet1") {
         // Iterate through the columns in the specified row
@@ -128,10 +208,10 @@ fn xls_categories_to_vec(row: u32) -> Option<Vec<String>> {
 // shifting row number by 15
 
 // returns row number of correct year entry
-fn xls_find_year_entry_row_number(column: u32, year_to_find: i64) -> Option<u32> {
+fn xls_find_year_entry_row_number(column: u32, year_to_find: i64, path_to_workbook: &str) -> Option<u32> {
    
     // opens a new workbook
-    let mut workbook: Xlsx<_> = open_workbook(WORKBOOK_PATH).expect("Cannot open file");
+    let mut workbook: Xlsx<_> = open_workbook(path_to_workbook).expect("Cannot open file");
 
     // Read whole worksheet data
     if let Some(Ok(range)) = workbook.worksheet_range("Sheet1") {
@@ -230,15 +310,16 @@ mod tests {
 
         // check the present year in a test_file
         let mut year_to_find = 2026;
+        let path = WORKBOOK_PATH_LAST_BACK_UP;
         
         // use function
-        let result = xls_find_year_entry_row_number(YEAR_MONTH_COLUMN, year_to_find);
+        let result = xls_find_year_entry_row_number(YEAR_MONTH_COLUMN, year_to_find, path);
         // expect Some u32
         assert!(result.is_some());
 
         // test year which is not present
         year_to_find = 2022;
-        let result = xls_find_year_entry_row_number(YEAR_MONTH_COLUMN, year_to_find);
+        let result = xls_find_year_entry_row_number(YEAR_MONTH_COLUMN, year_to_find, path);
         // expect None
         assert!(result.is_none());
     }
@@ -316,7 +397,7 @@ mod tests {
         };
 
         // Call the function to insert monthly expense entry
-        let result = xls_insert_monthly_expense_entry_in_a_new_workbook(month_expenses);
+        let result = xls_insert_monthly_expense_entry_in_a_new_workbook(month_expenses, WORKBOOK_PATH_LAST_BACK_UP);
         
         // Check if the function returned true
         assert!(result);
@@ -329,5 +410,30 @@ mod tests {
         // Since xlsxwriter doesn't allow modifying existing files,
         // test should create new file-mask that has to be used later on
         // to combine 2 files (workbooks join :D): existing and new
+    }
+
+    #[test]
+    fn test_xls_perform_workbook_update() {
+        // Step 1: Prepare test MonthExpenses data
+        let month_expenses = MonthExpenses {
+            year: 2023,
+            month: "January".to_string(),
+            expenses_data: {
+                let mut data = HashMap::new();
+                data.insert("Groceries".to_string(), 150.00);
+                data.insert("Restaurants".to_string(), 98.30);
+                data
+            },
+        };
+    
+        // let backup_workbook_path = "src/data/test_existing_workbook.xlsx";
+        // let new_workbook_path = "src/data/test_mask_workbook.xlsx";
+        // let merged_workbook_path = "src/data/test_merged_workbook.xlsx";
+
+        // Step 3: Call the function
+        let result = xls_perform_workbook_update(month_expenses);
+    
+        // Check if the function returned true (success)
+        assert!(result, "xls_perform_workbook_update should return true on success");
     }
 }
