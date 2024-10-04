@@ -311,7 +311,7 @@ mod tests {
     use std::collections::HashMap;
 
     // used for manual tests
-    const WORKBOOK_PATH: &str = "src/data/test_file_result.xlsx";
+    // const WORKBOOK_PATH: &str = "src/data/test_file_result.xlsx";
     const WORKBOOK_PATH_LAST_BACK_UP: &str = "src/data/test_existing_workbook.xlsx";
     const WORKBOOK_PATH_TPM: &str = "src/data/test_mask_workbook.xlsx";
 
