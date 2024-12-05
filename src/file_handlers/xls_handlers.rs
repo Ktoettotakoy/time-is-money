@@ -304,7 +304,6 @@ fn xls_find_month_entry_row_number(year_row: u32, month_to_find: String) -> Opti
 }
 
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

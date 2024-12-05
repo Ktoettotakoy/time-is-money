@@ -2,9 +2,13 @@ import { Button, VerticalBox, HorizontalBox } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
     title: "Time Is Money";
-    preferred-height: 400px;
-    preferred-width: 400px;
-    
+    preferred-height: 450px;
+    preferred-width: 450px;
+
+    // constants
+    property <int> bold: 700;
+    property <int> normal: 400; 
+
 
     callback request-acc-data();
     callback choose-file();
@@ -12,51 +16,96 @@ export component AppWindow inherits Window {
     property <bool> file-chosen: false;
     in property <string> filename;
     in-out property <string> filepath;
-    
+
     VerticalBox {
-        
+        spacing: 16px;
+        padding: 16px;
+
+        // Header Section
         Rectangle {
-            background: #CFCCD6;
-            horizontal-stretch: 1;
-            Text {
-                text: "Hello world, it's only beginning";
-            }
-        }
-        
-        Rectangle {
-            background: #B7B5E4;
-            horizontal-stretch: 1;
-            Text {
-                text: filename;
+            padding: 16px;
+            height: 80px;
+            HorizontalBox {
+                alignment: center;
+                spacing: 8px;
+                Text {
+                    text: "⏱️ Time Is Money";
+                    font-size: 24px;
+                    color: #6c757d;
+                    font-weight: root.bold;
+                }
             }
         }
 
+        // File Info Section
         Rectangle {
-            background: #CFCCD6;
-            horizontal-stretch: 1;
+            background: #f5f7fa;
+            border-radius: 8px;
+            padding: 12px;
+            VerticalBox {
+                spacing: 4px;
+                Text {
+                    text: "Selected File:";
+                    font-size: 16px;
+                    color: #6c757d;
+                }
+                Text {
+                    text: filename;
+                    font-size: 18px;
+                    font-weight: root.bold;
+                    color: #343a40;
+                }
+            }
+        }
+
+        // Action Buttons Section
+        Rectangle {
+            border-radius: 8px;
+            padding: 16px;
             HorizontalBox {
+                spacing: 16px;
+                alignment: center;
+
                 Button {
-                    width:190px;
-                    height: 100px;
-                    padding: 0px;
-                    text: "Choose file";
+                    width: 180px;
+                    height: 50px;
+                    text: "Choose File";
                     clicked => {
                         root.choose-file();
                     }
                 }
+
                 Button {
-                    width: 190px;
-                    height: 100px;
-                    padding: 0px;
-                    text: "Get accounting related info into terminal";
+                    width: 180px;
+                    height: 50px;
+                    text: "Extract Data";
                     clicked => {
                         root.request-acc-data();
                     }
                 }
-            } 
+            }
         }
 
-        
-    }    
-    
+        // Footer Section
+        Rectangle {
+            height: 40px;
+            background: #f1f3f5;
+            border-radius: 8px;
+            padding: 12px;
+            HorizontalBox {
+                alignment: center;
+                spacing: 4px;
+                Text {
+                    text: "Made with ❤️ by Yaroslav";
+                    font-size: 12px;
+                    color: #adb5bd;
+                }
+                Text {
+                    text: "v1.0";
+                    font-size: 12px;
+                    color: #ced4da;
+                }
+            }
+        }
+    }
 }
