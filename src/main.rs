@@ -1,9 +1,12 @@
 use acc_app::file_handlers::txt_handlers::show_debug_data_from_file;
 use acc_app::file_handlers::txt_handlers::transform_file_into_me_struct;
-// use acc_app::file_handlers::xls_handlers::xls_perform_workbook_update;
+use acc_app::file_handlers::xls_handlers::xls_perform_workbook_update;
 use rfd::FileDialog;
 
 slint::include_modules!();
+
+// hardcoded and exposed, yep
+const DESTINATION_FOR_SAVED_SPREADSHEET: &str = "/Users/yaroslav.k0/Documents/myAccAppFileStorage"; // filepath where tmp files are going to be stored
 
 fn main() -> Result<(), slint::PlatformError> {
 
@@ -21,7 +24,7 @@ fn main() -> Result<(), slint::PlatformError> {
         let ui_handle = ui.as_weak();
         move || {
             let ui = ui_handle.unwrap();
-            
+
             let tmp = ui.get_filepath();
             let filepath = tmp.as_str();
 
@@ -36,18 +39,19 @@ fn main() -> Result<(), slint::PlatformError> {
         let ui_handle = ui.as_weak();
         move || {
             let ui = ui_handle.unwrap();
-            
+
             let tmp = ui.get_filepath();
             let filepath = tmp.as_str();
 
-            if let Some(_me) = transform_file_into_me_struct(filepath){
-                // let _success = xls_perform_workbook_update(me);
+            if let Some(me) = transform_file_into_me_struct(filepath){
+                let _success = xls_perform_workbook_update(me, DESTINATION_FOR_SAVED_SPREADSHEET);
             }
             // not finished
+            // add response on the frontend
         }
     });
 
-    ui.on_choose_file({  
+    ui.on_choose_file({
         let ui_handle = ui.as_weak();
         move || {
             let filename:String;
@@ -68,11 +72,10 @@ fn main() -> Result<(), slint::PlatformError> {
             }
 
             let ui = ui_handle.unwrap();
-            ui.set_filename(filename.into()); 
-            ui.set_filepath(filepath.into()); 
+            ui.set_filename(filename.into());
+            ui.set_filepath(filepath.into());
         }
     });
 
     ui.run()
 }
-

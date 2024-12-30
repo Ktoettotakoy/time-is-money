@@ -2,17 +2,16 @@ use std::{collections::HashMap, fs::File, io::Read, path::Path};
 use crate::utils::structs::MonthExpenses;
 
 pub fn show_debug_data_from_file(filepath: &str) -> String {
-    if let Some(data) = read_txt_file_to_string(filepath) {
-        if let Some(expenses_map) = put_data_into_hashmap(&data) {
-            let sum: f64 = expenses_map.values().sum();
+    if let Some(data) = transform_file_into_me_struct(filepath) {
+        let sum: f64 = data.expenses_data.values().sum();
 
-            let result = format!(
-                "Total is {:.2}\nBy category:\n{}", sum,
-                serde_json::to_string_pretty(&expenses_map).unwrap_or_else(|_| "Error serializing to JSON".to_string())
-            );
+        let result = format!(
+            "Total is {:.2}\nMetaData is {} {}\nBy category:\n{:?}", sum,
+            data.year, data.month,
+            serde_json::to_string_pretty(&data.expenses_data)
+        );
 
-            return result;
-        }
+        return result;
     }
     "".to_string() // return nothing
 }
@@ -21,7 +20,7 @@ pub fn show_debug_data_from_file(filepath: &str) -> String {
 pub fn transform_file_into_me_struct(filepath: &str) -> Option<MonthExpenses> {
     if let Some(data) = read_txt_file_to_string(filepath) {
         let mut lines = data.lines();
-        
+
         // Assume the first line contains the month and year in the format "Month Year"
         if let Some(meta_data) = lines.next() {
             let parts: Vec<&str> = meta_data.split_whitespace().collect();
@@ -45,15 +44,15 @@ pub fn transform_file_into_me_struct(filepath: &str) -> Option<MonthExpenses> {
     None
 }
 
-// receives string slice with expected structure: 
-//  first line meta_data (month, year) not important 
-//  other lines should have format: 
+// receives string slice with expected structure:
+//  first line meta_data (month, year) not important
+//  other lines should have format:
 //      string (category) or float (expenses) or empty line (delimiter)
-// there can be multiple entries of expenses followed by delimiter and next category after it 
+// there can be multiple entries of expenses followed by delimiter and next category after it
 fn put_data_into_hashmap(data: &str) -> Option<HashMap<String, f64>> {
     let mut expenses_by_category: HashMap<String, f64> = HashMap::new();
     let mut lines = data.lines();
-    
+
     // Skip the first line (month and year)
     let _meta_data = lines.next();
 
@@ -145,7 +144,7 @@ mod tests {
         assert!(result.is_none());
     }
 
-    #[test]    
+    #[test]
     fn test_read_txt_file_to_string_file_is_not_txt(){
         // Ensure the file doesn't exist
         let test_file_path = "non_existent_file.png";
@@ -157,7 +156,7 @@ mod tests {
 
     #[test]
     fn test_process_data_from_file() {
-        
+
         let test_file_path = "test2.txt";
 
         // Write some test data to the file

@@ -7,7 +7,7 @@ export component AppWindow inherits Window {
 
     // constants
     property <int> bold: 700;
-    property <int> normal: 400; 
+    property <int> normal: 400;
 
 
     callback request-acc-data();
@@ -81,6 +81,7 @@ export component AppWindow inherits Window {
                     text: "Extract Data";
                     clicked => {
                         root.request-acc-data();
+                        root.put_me_into_excel();
                     }
                 }
             }

@@ -5,33 +5,33 @@ use std::path::Path;
 use crate::utils::folder_file_utils::{ prepare_folder_structure, get_latest_backup};
 use crate::utils::structs::MonthExpenses;
 
-const YEAR_MONTH_COLUMN: u32 = 1; // index of column "C" (A = 0 B = 1)
+const YEAR_MONTH_COLUMN: u32 = 1; // index of column (A = 0 B = 1)
 const STARTING_ROW: u32 = 1; // starting position of a table. (row 1 = pos 0, row 2 = pos 1)
 
 const TMP_FOLDER: &str = "tmp";
 const TMP_WORKBOOK_NAME: &str = "tmp_mask.xlsx"; // hardcoded for test
-const RES_WORKBOOK_NAME: &str = "myAccTest.xlsx"; // hardcoded for test
+const RES_WORKBOOK_NAME: &str = "myAccGenerated.xlsx"; // hardcoded for test
 
-// TODO! replace hardcoded workbook path with a variable in xls_insert_monthly_expenses 
+// TODO! replace hardcoded workbook path with a variable in xls_insert_monthly_expenses
 
-// function has to unite existing .xlsx file and newly crated "mask" sheet 
-// in order to fulfil main purpose - allow me inserting data using one click into the 
+// function has to unite existing .xlsx file and newly crated "mask" sheet
+// in order to fulfil main purpose - allow me inserting data using one click into the
 // excel spreadsheet
 
 // returns true if success
 pub fn xls_perform_workbook_update(me: MonthExpenses, destination_path: &str) -> bool{
-    
+
     if let Err(e) = prepare_folder_structure(destination_path, RES_WORKBOOK_NAME) {
         println!("Error preparing folder structure: {:?}", e);
         return false;
     }
-    
+
     // Prepare paths for backup and temp workbooks
     let result_workbook_path = Path::new(destination_path).join(RES_WORKBOOK_NAME);
     let backup_workbook_path = get_latest_backup(destination_path).expect("Failed to get latest backup");
     let tmp_workbook_path = Path::new(destination_path).join(TMP_FOLDER).join(TMP_WORKBOOK_NAME);
-    
-    
+
+
     // convert path to &str
     let backup_workbook_path_str = backup_workbook_path.to_str().unwrap();
     let tmp_workbook_path_str = tmp_workbook_path.to_str().unwrap();
@@ -42,22 +42,21 @@ pub fn xls_perform_workbook_update(me: MonthExpenses, destination_path: &str) ->
         println!("Failed to create 'mask' workbook with new data.");
         return false;
     }
-    
-    
+
+
     // Open the existing workbook
     let mut existing_workbook: Xlsx<_> = open_workbook(backup_workbook_path_str).expect("Cannot open existing workbook");
-    
+
     // Open the newly created "mask" workbook
     let mut new_workbook: Xlsx<_> = open_workbook(tmp_workbook_path_str).expect("Cannot open 'mask' workbook");
-    
+
     // Create a new workbook to store the merged data
     let write_workbook_result: Result<Workbook, XlsxError> = Workbook::new(result_workbook_path_str);
-    
+
     match write_workbook_result {
         Ok(merged_workbook) => {
             // Create a new sheet in the merged workbook
             let sheet_result = merged_workbook.add_worksheet(Some("Sheet1"));
-
             match sheet_result {
                 Ok(mut sheet) => {
                     // Iterate over the Existing data and copy it to the new workbook
@@ -85,8 +84,10 @@ pub fn xls_perform_workbook_update(me: MonthExpenses, destination_path: &str) ->
 
                     // Merge the "mask" workbook data into the new workbook
                     if let Some(Ok(new_range)) = new_workbook.worksheet_range("Sheet1") {
-                        for row in 0..new_range.height() {
-                            for col in 0..new_range.width() {
+                        // careful hardcoded
+                        for row in 0..10000 {
+                            // max amount of categories is around 27
+                            for col in 0..30 {
                                 if let Some(cell) = new_range.get_value((row as u32, col as u32)) {
                                     // If the cell contains new data from the "mask", insert it
                                     match cell {
@@ -130,21 +131,21 @@ pub fn xls_insert_monthly_expense_entry_in_a_new_workbook(me: MonthExpenses, pat
     let year_to_find = me.year;
     let month_to_find = me.month;
     let expenses_data = me.expenses_data;
-    
+
     // Find the row for the given year
     if let Some(year_row) = xls_find_year_entry_row_number(YEAR_MONTH_COLUMN, year_to_find, path_to_back_up_workbook) {
-        
+        println!("year_row {}", year_row);
         // Find the correct row for the month
         if let Some(month_row) = xls_find_month_entry_row_number(year_row, month_to_find) {
-            
+            println!("month_row {}", month_row);
             // Get categories from the same row
             if let Some(categories) = xls_categories_to_vec(year_row, path_to_back_up_workbook) {
-
+                println!("categories: {:?}", categories);
                 // Create a new workbook for writing (xlsxwriter cannot modify existing files directly)
                 let write_workbook_result: Result<Workbook, XlsxError> = Workbook::new(path_to_tmp_workbook);
                 match write_workbook_result{
                     Ok( workbook_result) => {
-                        
+
                         let sheet_result = workbook_result.add_worksheet(Some("Sheet1"));
 
                         match sheet_result {
@@ -153,13 +154,14 @@ pub fn xls_insert_monthly_expense_entry_in_a_new_workbook(me: MonthExpenses, pat
                                 for (col, category) in categories.iter().enumerate() {
                                     if let Some(expense) = expenses_data.get(category) {
                                         // Insert expense into the corresponding column
+                                        println!("Row {} Col {}, category {}",month_row, col, category);
                                         sheet.write_number(
                                             month_row as u32,
                                         col as u16 + YEAR_MONTH_COLUMN as u16 + 1,
                                     *expense, None).expect("Cannot write expense");
                                     }
                                 }
-                                
+
                                 // Save the new workbook with changes
                                 workbook_result.close().expect("Cannot save file");
                                 return true;
@@ -197,12 +199,12 @@ fn xls_categories_to_vec(row: u32, workbook_backup_path: &str) -> Option<Vec<Str
             match cell {
                 DataType::String(category) => {
                     // Add category to the vector
-                    categories.push(category.clone());  
+                    categories.push(category.to_string().trim().to_string().clone());
                 }
                 DataType::Empty => {
                     // Stop when an empty cell is encountered
-                    println!("Empty Cell");
-                    break;  
+                    // println!("Empty Cell");
+                    break;
                 }
                 _ => {
                     println!("Category type mismatch {:?}", cell);
@@ -220,27 +222,28 @@ fn xls_categories_to_vec(row: u32, workbook_backup_path: &str) -> Option<Vec<Str
 }
 
 
-// There exists column C which contains 
+// There exists column B which contains
 // year (int) followed by 12 month (String) = (13 rows).
 // Each year is separated with 2 blank lines.
-// So starting from base row and column I can reach any next year 
+// So starting from base row and column I can reach any next year
 // shifting row number by 15
 
 // returns row number of correct year entry
 fn xls_find_year_entry_row_number(column: u32, year_to_find: i64, path_to_workbook: &str) -> Option<u32> {
-   
+
     // opens a new workbook
     let mut workbook: Xlsx<_> = open_workbook(path_to_workbook).expect("Cannot open file");
 
     // Read whole worksheet data
+    // Note that code is shit and actually Sheet1 (name) is hardcoded
     if let Some(Ok(range)) = workbook.worksheet_range("Sheet1") {
         let mut row_number: u32 = STARTING_ROW;
-        
+
         while row_number < range.height().try_into().unwrap() {
-            if let Some(cell) = range.get_value((row_number, column)) { 
-                
+            if let Some(cell) = range.get_value((row_number, column)) {
+
                 // println!("{}",cell); // debug print
-                
+
                 // Check if the cell contains the desired year
                 match cell {
                     DataType::Int(year) => { // added just in case
@@ -252,7 +255,7 @@ fn xls_find_year_entry_row_number(column: u32, year_to_find: i64, path_to_workbo
                         // General cell format in excel converts any integer to floats
                         // Convert float to i64 and compare
                         if *year_float as i64 == year_to_find {
-                            return Some(row_number); 
+                            return Some(row_number);
                         }
                     }
                     _ => {
@@ -261,20 +264,20 @@ fn xls_find_year_entry_row_number(column: u32, year_to_find: i64, path_to_workbo
                     }
                 }
             }
-            
-            // Skip 15 rows at a time as each year block takes 13 rows (12 months + year) 
+
+            // Skip 15 rows at a time as each year block takes 13 rows (12 months + year)
             // followed by 2 blank rows
             row_number += 15;
         }
     }
     println!("No year found");
-    None  
+    None
 }
 
-// There exists column C which contains 
+// There exists column C which contains
 // year (int) followed by 12 month (String) = (13 rows).
 // Each year is separated with 2 blank lines.
-// So starting from base row and column I can reach any next year 
+// So starting from base row and column I can reach any next year
 // shifting row number by 15
 
 // returns row number of correct month entry based on starting row (year)
@@ -295,7 +298,7 @@ fn xls_find_month_entry_row_number(year_row: u32, month_to_find: String) -> Opti
         "November" => 11,
         "December" => 12,
         _ => return None, // If the month is not valid, return None
-        // in future I can add here string default output that would notify me that 
+        // in future I can add here string default output that would notify me that
         // month in my .txt file has a typo or I messed up my format
     };
 
@@ -334,7 +337,7 @@ mod tests {
         // check the present year in a test_file
         let mut year_to_find = 2026;
         let path = WORKBOOK_PATH_LAST_BACK_UP;
-        
+
         // use function
         let result = xls_find_year_entry_row_number(YEAR_MONTH_COLUMN, year_to_find, path);
         // expect Some u32
@@ -382,7 +385,7 @@ mod tests {
         // | February  | 219.82    | 52.80         | 8.80        |
         // | ...       | ...       | ...           | ...         |
         // | 2024      | ...       | ...           | ...         |   (Row 17, Column C)
-        // | ...       | ...       | ...           | ...         |        
+        // | ...       | ...       | ...           | ...         |
         // | 2026      | ...       | ...           | ...         |   (Row 32, Column C)
 
 
@@ -421,14 +424,14 @@ mod tests {
 
         // Call the function to insert monthly expense entry
         let result = xls_insert_monthly_expense_entry_in_a_new_workbook(month_expenses, WORKBOOK_PATH_LAST_BACK_UP, WORKBOOK_PATH_TPM);
-        
+
         // Check if the function returned true
         assert!(result);
 
         // Note this test should be verified manually to simplify the test.
-        // Don't forget to delete new file before running the test again 
-        // otherwise it can get falsely result, but generally it is impossible to 
-        // break it until you use correct input format for .txt and existing .xls 
+        // Don't forget to delete new file before running the test again
+        // otherwise it can get falsely result, but generally it is impossible to
+        // break it until you use correct input format for .txt and existing .xls
 
         // Since xlsxwriter doesn't allow modifying existing files,
         // test should create new file-mask that has to be used later on
@@ -448,12 +451,12 @@ mod tests {
                 data
             },
         };
-    
+
         let destination = "src/data/final_test";
 
         // Step 3: Call the function
         let result = xls_perform_workbook_update(month_expenses, destination);
-    
+
         // Check if the function returned true (success)
         assert!(result, "xls_perform_workbook_update should return true on success");
     }
