@@ -134,10 +134,8 @@ pub fn xls_insert_monthly_expense_entry_in_a_new_workbook(me: MonthExpenses, pat
 
     // Find the row for the given year
     if let Some(year_row) = xls_find_year_entry_row_number(YEAR_MONTH_COLUMN, year_to_find, path_to_back_up_workbook) {
-        println!("year_row {}", year_row);
         // Find the correct row for the month
         if let Some(month_row) = xls_find_month_entry_row_number(year_row, month_to_find) {
-            println!("month_row {}", month_row);
             // Get categories from the same row
             if let Some(categories) = xls_categories_to_vec(year_row, path_to_back_up_workbook) {
                 println!("categories: {:?}", categories);
