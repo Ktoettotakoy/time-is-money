@@ -2,8 +2,9 @@ import { Button, VerticalBox, HorizontalBox } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
     title: "Time Is Money";
-    preferred-height: 450px;
-    preferred-width: 450px;
+    max-height: 380px;
+    max-width: 400px;
+    min-height: 380px;
 
     // constants
     property <int> bold: 700;
@@ -13,12 +14,12 @@ export component AppWindow inherits Window {
     callback request-acc-data();
     callback choose-file();
     callback put_me_into_excel();
-    property <bool> file-chosen: false;
     in property <string> filename;
     in-out property <string> filepath;
+    property <string> state: "Nothing happened yet";
 
     VerticalBox {
-        spacing: 16px;
+        spacing: 20px;
         padding: 16px;
 
         // Header Section
@@ -29,6 +30,7 @@ export component AppWindow inherits Window {
                 alignment: center;
                 spacing: 8px;
                 Text {
+                    vertical-alignment: center;
                     text: "⏱️ Time Is Money";
                     font-size: 24px;
                     color: #6c757d;
@@ -42,18 +44,30 @@ export component AppWindow inherits Window {
             background: #f5f7fa;
             border-radius: 8px;
             padding: 12px;
-            VerticalBox {
-                spacing: 4px;
+            height: 40px;
+            HorizontalBox {
                 Text {
-                    text: "Selected File:";
-                    font-size: 16px;
+                    text: "Selected File: " + filename;
+                    vertical-alignment: center;
+                    font-size: 14px;
                     color: #6c757d;
                 }
+            }
+        }
+
+        // Shows current state of program
+        Rectangle {
+            background: #f5f7fa;
+            border-radius: 8px;
+            padding: 12px;
+            height: 40px;
+            HorizontalBox {
                 Text {
-                    text: filename;
-                    font-size: 18px;
-                    font-weight: root.bold;
-                    color: #343a40;
+                    text: state;
+                    vertical-alignment: center;
+                    font-size: 12px;
+                    color: #6c757d;
+                    font-weight: normal;
                 }
             }
         }
@@ -61,27 +75,28 @@ export component AppWindow inherits Window {
         // Action Buttons Section
         Rectangle {
             border-radius: 8px;
-            padding: 16px;
-            HorizontalBox {
-                spacing: 16px;
-                alignment: center;
 
+            HorizontalBox {
+                padding: 0px;
+                alignment: center;
                 Button {
-                    width: 180px;
-                    height: 50px;
+                    width: 192px;
+                    height: 52px;
                     text: "Choose File";
                     clicked => {
+                        state = "Nice choice";
                         root.choose-file();
                     }
                 }
 
                 Button {
-                    width: 180px;
-                    height: 50px;
+                    width: 192px;
+                    height: 52px;
                     text: "Extract Data";
                     clicked => {
                         root.request-acc-data();
                         root.put_me_into_excel();
+                        state = "Data is in spreadsheet now";
                     }
                 }
             }
@@ -99,11 +114,13 @@ export component AppWindow inherits Window {
                 Text {
                     text: "Made with ❤️ by Yaroslav";
                     font-size: 12px;
+                    vertical-alignment: center;
                     color: #adb5bd;
                 }
                 Text {
-                    text: "v1.0";
+                    text: "v1.1";
                     font-size: 12px;
+                    vertical-alignment: center;
                     color: #ced4da;
                 }
             }
