@@ -31,6 +31,7 @@ Next step is to make ui more responsive, add some ux features (like configuratio
 30.12
 I guess anybody can use app now. Assuming you know how to structure the .txt file; You have changed the hardcoded dest folder in main.rs; In that folder you have a backup folder with at least 1 excel spreadsheet (can be empty); And
 probably some other assumptions, I'll make it more user friendly next year.
+
 (I'll leave this not clean tested way to build an app)
 1. `git clone https://github.com/Ktoettotakoy/accounting_app`
 2. `cd` to root
