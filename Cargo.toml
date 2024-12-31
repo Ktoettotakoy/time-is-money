@@ -15,5 +15,18 @@ xlsxwriter = "0.6.1"
 chrono = "0.4"
 tempfile = "3.3"
 
+[package.metadata.bundle]
+name = "Time is Money"
+identifier = "io.github.Ktoettotakoy.accounting_app"
+icon = ["32x32.png", "128x128.png", "128x128@2x.png"]
+version = "1.0.1"
+resources = ["src/data/logo/*.png"]
+category = "Finance"
+short_description = "App to fill in the expenses from .txt file with a special format"
+long_description = """
+Purpose is simple: learn and build something useful for me (Using Rust was a bad idea though),
+but I've learned a lot.
+"""
+
 [build-dependencies]
 slint-build = "1.6"
