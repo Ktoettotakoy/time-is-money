@@ -22,7 +22,17 @@ After finishing the app, I expect to:
 - And the most important!!! Save time on tasks I had to do manually
 
 #### Update (december)
+29.12
 I had to study a lot, now I'm back.
 I still currently have to manually create a folder (hardcoded in main.rs as a const) and fill it with tmp folder, backup folder and populate backup with a lest 1 .xlsx file
 I'll fix it later, but generally app should work now.
 Next step is to make ui more responsive, add some ux features (like configurations for folders, and automatic creation of some files).
+
+30.12
+I guess anybody can use app now. Assuming you know how to structure the .txt file; You have changed the hardcoded dest folder in main.rs; In that folder you have a backup folder with at least 1 excel spreadsheet (can be empty); And
+probably some other assumptions, I'll make it more user friendly next year.
+(I'll leave this not clean tested way to build an app)
+1. `git clone https://github.com/Ktoettotakoy/accounting_app`
+2. `cd` to root
+3. `cargo bundle --release`
+4. app should be in `target/release/bundle/osx/` folder
