@@ -18,7 +18,7 @@ tempfile = "3.3"
 [package.metadata.bundle]
 name = "Time is Money"
 identifier = "io.github.Ktoettotakoy.accounting_app"
-icon = ["ui/logo/32x32.png", "ui/logo/128x128.png", "ui/logo/128x128@2x.png"]
+icon = ["ui/logo/16x16.png","ui/logo/32x32.png", "ui/logo/128x128.png", "ui/logo/128x128@2x.png"]
 version = "1.0.1"
 resources = ["ui/logo/*.png"]
 category = "Finance"
