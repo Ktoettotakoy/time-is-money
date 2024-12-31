@@ -6,7 +6,7 @@ use rfd::FileDialog;
 slint::include_modules!();
 
 // hardcoded and exposed, yep
-const DESTINATION_FOR_SAVED_SPREADSHEET: &str = "/Users/yaroslav.k0/Documents/myAccAppFileStorage"; // filepath where tmp files are going to be stored
+const DESTINATION_FOR_SAVED_SPREADSHEET: &str = "/Users/yaroslav.k0/Documents/Acc/expenses"; // filepath where tmp files are going to be stored
 
 fn main() -> Result<(), slint::PlatformError> {
 

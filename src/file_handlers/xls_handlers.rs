@@ -10,7 +10,7 @@ const STARTING_ROW: u32 = 1; // starting position of a table. (row 1 = pos 0, ro
 
 const TMP_FOLDER: &str = "tmp";
 const TMP_WORKBOOK_NAME: &str = "tmp_mask.xlsx"; // hardcoded for test
-const RES_WORKBOOK_NAME: &str = "myAccGenerated.xlsx"; // hardcoded for test
+const RES_WORKBOOK_NAME: &str = "expensesGenerated.xlsx"; // hardcoded for test
 
 // TODO! replace hardcoded workbook path with a variable in xls_insert_monthly_expenses
 

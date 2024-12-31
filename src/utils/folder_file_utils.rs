@@ -13,7 +13,7 @@ const MAX_BACKUPS: usize = 3; // including ds store))
 
 // Function to set up and clean the folder structure
 pub fn prepare_folder_structure(base_path: &str, res_file:&str) -> io::Result<()> {
-    
+
     let base_folder = Path::new(base_path);
     let tmp_folder = base_folder.join(TMP_FOLDER);
     let backup_folder = base_folder.join(BACKUP_FOLDER);
@@ -42,7 +42,7 @@ pub fn get_latest_backup(destination_path: &str) -> Option<PathBuf> {
     let latest_backup = fs::read_dir(backup_dir)
         .ok()?
         .filter_map(Result::ok) // Ignore any errors while reading directory entries
-        .filter( |entry| { 
+        .filter( |entry| {
             entry.file_type().map(|ft| ft.is_file()).unwrap_or(false)
             && entry.file_name().to_string_lossy().ends_with(".xlsx") // only look for .xlsx backups
         }) // Filter only files
@@ -80,7 +80,7 @@ fn clear_tmp_folder(tmp_folder: &Path) -> io::Result<()> {
 
 // Function to manage backup files, deleting the oldest if more than MAX_BACKUPS exist
 fn manage_backups(backup_folder: &Path, old_file_path: &Path) -> io::Result<()> {
-    
+
     ensure_folder_exists(backup_folder)?;
 
     // Check if the old file exists before proceeding with storing another backup
@@ -139,7 +139,7 @@ fn get_minimalistic_timestamp() -> String {
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Time went backwards");
-    
+
     let seconds = now.as_secs();
     let date_time: DateTime<Utc> = DateTime::from_timestamp(seconds as i64, 0).expect("DateTimeErr");
     date_time.format("%Y%m%d_%H%M%S").to_string()
@@ -242,10 +242,10 @@ mod tests {
         let temp_dir = tempdir().unwrap();
         let backup_folder = temp_dir.path().join("backup");
         let old_file_path = temp_dir.path().join("old_file.xlsx");
-        
+
         // Create a dummy old file
         File::create(&old_file_path).unwrap().write_all(b"Test data").unwrap();
-        
+
         // Ensure the backup folder exists
         fs::create_dir(&backup_folder).unwrap();
 
@@ -261,10 +261,10 @@ mod tests {
             .collect();
 
         assert!(!backup_files.is_empty(), "Backup files should exist.");
-        
+
         // Ensure the old file has been deleted
         assert!(!old_file_path.exists(), "Old file should have been removed.");
-        
+
         // Optionally, you can check the content of the backup file
         let backup_file_path = backup_folder.join(backup_files[0].file_name().unwrap());
         let content = fs::read_to_string(backup_file_path).unwrap();
