@@ -18,9 +18,9 @@ tempfile = "3.3"
 [package.metadata.bundle]
 name = "Time is Money"
 identifier = "io.github.Ktoettotakoy.accounting_app"
-icon = ["32x32.png", "128x128.png", "128x128@2x.png"]
+icon = ["ui/logo/32x32.png", "ui/logo/128x128.png", "ui/logo/128x128@2x.png"]
 version = "1.0.1"
-resources = ["src/data/logo/*.png"]
+resources = ["ui/logo/*.png"]
 category = "Finance"
 short_description = "App to fill in the expenses from .txt file with a special format"
 long_description = """
