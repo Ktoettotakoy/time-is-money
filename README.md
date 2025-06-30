@@ -13,7 +13,7 @@ So I came up with a wonderful idea to create a GUI app that would save me 2-5 mi
 After finishing the app, I expect to:
 - Finally use Rust for something (though not low-level yet)
 - Read a lot of documentation
-- Finally have a test coverage
+- Have a test some unit test coverage
 - Learn more about GUI libraries for Rust
 - Become a better designer
 - Prove that stats modules at university are not useless
